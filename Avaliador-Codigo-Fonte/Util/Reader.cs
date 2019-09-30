@@ -12,7 +12,7 @@ namespace Avaliador_Codigo_Fonte.Util
 	{
 		#region Atributos do reader, caminho do arquivo csv, titulo do texto csv, regexs.
 		string caminhoArquivoCSV = @"C:\\Users\\Gabriel Barreto\\Downloads\\Dataset\\Evolucao.csv";
-		static readonly string tituloTexto = "MÊS,LOC,CLASSES,MÉTODOS"; //,CLASSE DEUS, METODO DEUS";
+		static readonly string tituloTexto = "MÊS,LOC,CLASSES,MÉTODOS,CLASSE DEUS, METODO DEUS";
 		private readonly Regex rxClasses = new Regex("(.*class) * [A-Z].*[{]");
 		private readonly Regex rxMetodos = new Regex("(^.*(public|private|protected|.*))*\\s(List|void|int|Integer|double|Double|String|string|char|long|Long|boolean|short|float|byte|TPFactorizedValue|MessageKeyData|Typeface|(public|private|protected|.*) File |CharSequence|TLObject|TLRPC.PhotoSize|Bitmap).*([A-z0-9a-z]*[(].*[)]*[{])");
 		private readonly Regex rxLoc = new Regex("(\\S)");
@@ -84,13 +84,17 @@ namespace Avaliador_Codigo_Fonte.Util
 							if (!rxLoc.IsMatch(linha))
 								linhasEmBranco++;
 
-							if (rxMetodos.IsMatch(linha) && !rxComentado.IsMatch(linha)) {
-								godMetodo =+ ChecarGodMetodo();
+							if (rxMetodos.IsMatch(linha) && !rxComentado.IsMatch(linha))
+							{
+								godMetodo += ChecaGodMethod(fileInfo.FullName, linha);
 								numeroDeMetodos++;
 							}
-							if (rxClasses.IsMatch(linha) && !rxComentado.IsMatch(linha)) {
-								godClass =+ ChecarGodClass();
+
+							if (rxClasses.IsMatch(linha) && !rxComentado.IsMatch(linha))
+							{
+								godClass += ChecaGodClass(fileInfo.FullName, linha);
 								numeroDeClasses++;
+
 							}
 							totalLinhas.Add(linha);
 
@@ -98,7 +102,7 @@ namespace Avaliador_Codigo_Fonte.Util
 						}
 				}
 				mesVigente++; //ao sair da pasta contar como mês vigente.
-				arquivo.WriteLine(mesVigente.ToString() + ',' + loc.ToString() + ',' + numeroDeClasses.ToString() + ',' + numeroDeMetodos.ToString());
+				arquivo.WriteLine(mesVigente.ToString() + ',' + loc.ToString() + ',' + numeroDeClasses.ToString() + ',' + numeroDeMetodos.ToString() + ',' + godClass.ToString() + ',' + godMetodo.ToString());
 
 				#region Propriedades comentadas			
 				// propriedades à serem inseridas no arquivo csv -- poderia ter sido direto, mas preferi assim.
@@ -128,46 +132,45 @@ namespace Avaliador_Codigo_Fonte.Util
 		}
 		public string GerarPredicao(List<string[]> pColunas)
 		{
+			#region Propriedades
 			int predicaoLoc = 0;
 			int predicaoClasse = 0;
 			int predicaoMetodo = 0;
-			var lista = pColunas;
+			int predicaoGodClass = 0;
+			int predicaoGodMetodo = 0;
+			//var lista = pColunas;
 
 			PropriedadesPredicao propriedadesPredicao = new PropriedadesPredicao();
 			List<PropriedadesPredicao> lPropriedadesPredicao = new List<PropriedadesPredicao>();
+			#endregion
 
 			foreach (var mes in pColunas)
 			{
-				// Posição 1: LOC - Posição 2: CLASSE - Posição 3: - METODOS
+				// Posição 1: LOC - Posição 2: CLASSE - Posição 3: - METODOS - Posição 4: GODCLASS - Posição 5: GODMETODO
 				propriedadesPredicao.SomaLoc = Convert.ToDecimal(mes[1]) / 30;
 				propriedadesPredicao.SomaDeClasses = Convert.ToDecimal(mes[2]) / 30;
 				propriedadesPredicao.SomaDeMetodos = Convert.ToDecimal(mes[3]) / 30;
+				propriedadesPredicao.SomaGodClass = Convert.ToDecimal(mes[4]) / 30;
+				propriedadesPredicao.SomaGodMethod = Convert.ToDecimal(mes[5]) / 30;
 
 				lPropriedadesPredicao.Add(new PropriedadesPredicao()
 				{
 					SomaLoc = propriedadesPredicao.SomaLoc,
 					SomaDeClasses = propriedadesPredicao.SomaDeClasses,
-					SomaDeMetodos = propriedadesPredicao.SomaDeMetodos
-				});
+					SomaDeMetodos = propriedadesPredicao.SomaDeMetodos,
+					SomaGodClass = propriedadesPredicao.SomaGodClass,
+					SomaGodMethod = propriedadesPredicao.SomaGodMethod
+				}); ;
 			}
 			predicaoLoc = Convert.ToInt32(lPropriedadesPredicao.Sum(x => x.SomaLoc));
 			predicaoClasse = Convert.ToInt32(lPropriedadesPredicao.Sum(x => x.SomaDeClasses));
 			predicaoMetodo = Convert.ToInt32(lPropriedadesPredicao.Sum(x => x.SomaDeMetodos));
+			predicaoGodClass = Convert.ToInt32(lPropriedadesPredicao.Sum(x => x.SomaGodClass));
+			predicaoGodMetodo = Convert.ToInt32(lPropriedadesPredicao.Sum(x => x.SomaGodMethod));
 
-			return "28" + ',' + predicaoLoc.ToString() + ',' + predicaoClasse.ToString() + ',' + predicaoMetodo.ToString();
+			return "28" + ',' + predicaoLoc.ToString() + ',' + predicaoClasse.ToString() + ',' + predicaoMetodo.ToString() + ',' + predicaoGodClass.ToString() + ',' + predicaoGodMetodo.ToString();
 		}
 
-
-		public int ChecarGodClass()
-		{
-
-			return 0;
-		}
-
-		public int ChecarGodMetodo()
-		{
-			return 0;
-		}
 		#endregion
 
 		#region CSV - GERADOR E LEITOR
@@ -203,6 +206,67 @@ namespace Avaliador_Codigo_Fonte.Util
 			stream.Close();
 
 			return listaLinhaCsv;
+		}
+		#endregion
+
+		#region God's
+		public int ChecaGodClass(string path, string pLinha)
+		{
+			int godClass = 0;
+			int linhaContagem = 0;
+			int chave = 0;
+			string linha = "";
+			using (StreamReader texto = new StreamReader(path))
+			{
+				chave = 0;
+				while ((linha = texto.ReadLine()) != null)
+					if (rxClasses.IsMatch(pLinha) && !rxComentado.IsMatch(pLinha))
+					{
+						while (texto.ReadLine() != null)
+						{
+							if (linha.Contains("{")) chave++;
+							if (linha.Contains("}")) chave--;
+
+							linhaContagem++;
+						}
+					}
+
+			}
+			if (chave == 0 && linhaContagem >= 800)
+				godClass++;
+
+			return godClass;
+		}
+
+		public int ChecaGodMethod(string path, string pLinha)
+		{
+			Regex rxChave = new Regex("(.*[}].*[{])|(.*[}])");
+			int godMethod = 0;
+			int linhaContagem = 0;
+			int chave = 1;
+			int totalChave = 1;
+
+			string linha = "";
+			using (StreamReader texto = new StreamReader(path))
+			{
+				chave = 0;
+				while ((linha = texto.ReadLine()) != null)
+					if (rxMetodos.IsMatch(pLinha) && !rxComentado.IsMatch(pLinha))
+					{
+						while (texto.ReadLine() != null)
+						{
+							if (rxMetodos.IsMatch(linha))
+								totalChave -= chave;
+
+							linhaContagem++;
+						}
+					}
+
+			}
+			if (chave == -2 && linhaContagem >= 800)
+				godMethod++;
+
+			return godMethod;
 		}
 		#endregion
 	}

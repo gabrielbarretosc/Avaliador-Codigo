@@ -11,7 +11,23 @@ namespace Avaliador_Codigo_Fonte.Util
 	class Reader
 	{
 		#region Atributos do reader, caminho do arquivo csv, titulo do texto csv, regexs.
-		string caminhoArquivoCSV = @"C:\\Users\\Gabriel Barreto\\Downloads\\Dataset\\Evolucao.csv";
+
+		string caminhoArquivoCSV = "";
+
+		internal void SetDataSource()
+		{
+			caminhoArquivoCSV = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Evolucao.csv");
+		}
+		internal void SetDataSource(string pCaminho)
+		{
+			caminhoArquivoCSV = Path.Combine(pCaminho, "Evolucao.csv");
+		}
+
+		internal string GetDataSource()
+		{
+			return caminhoArquivoCSV;
+		}
+
 		static readonly string tituloTexto = "MÊS,LOC,CLASSES,MÉTODOS,CLASSE DEUS, METODO DEUS";
 		private readonly Regex rxClasses = new Regex("(.*class) * [A-Z].*[{]");
 		private readonly Regex rxMetodos = new Regex("(^.*(public|private|protected|.*))*\\s(List|void|int|Integer|double|Double|String|string|char|long|Long|boolean|short|float|byte|TPFactorizedValue|MessageKeyData|Typeface|(public|private|protected|.*) File |CharSequence|TLObject|TLRPC.PhotoSize|Bitmap).*([A-z0-9a-z]*[(].*[)]*[{])");

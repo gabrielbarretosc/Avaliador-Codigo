@@ -1,2 +1,5 @@
 # Avaliador-Codigo
-Atividade de Evolução de Software.
+
+Atividade da matéria Evolução de Software, UCSAL - Universidade Católica do Salvador
+Professor: André Brasil Vieira Wyzykowski
+Aluno: Gabriel Barreto da Silva Costa
